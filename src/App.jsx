@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { SoundProvider } from './contexts/SoundContext';
 import LevelMap from './components/LevelMap';
 import Game from './components/Game';
 import './index.css';
@@ -34,20 +35,22 @@ const App = () => {
 
   return (
     <ThemeProvider>
-      <div className="font-sans transition-colors duration-500">
-        {view === 'map' ? (
-          <LevelMap
-            unlockedMaxLevel={unlockedMaxLevel}
-            onSelectLevel={handleLevelSelect}
-          />
-        ) : (
-          <Game
-            level={currentLevel}
-            onBack={handleBackToMap}
-            onComplete={handleLevelComplete}
-          />
-        )}
-      </div>
+      <SoundProvider>
+        <div className="font-sans transition-colors duration-500">
+          {view === 'map' ? (
+            <LevelMap
+              unlockedMaxLevel={unlockedMaxLevel}
+              onSelectLevel={handleLevelSelect}
+            />
+          ) : (
+            <Game
+              level={currentLevel}
+              onBack={handleBackToMap}
+              onComplete={handleLevelComplete}
+            />
+          )}
+        </div>
+      </SoundProvider>
     </ThemeProvider>
   );
 };
