@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSound } from '../contexts/SoundContext';
+import { saveScore } from '../utils/leaderboardUtils';
+import LeaderboardModal from './LeaderboardModal';
 
 const Game = ({ level, onBack, onComplete }) => {
     const { currentTheme } = useTheme();
+    const { playSound, isMuted, toggleMute } = useSound();
 
     // Board configuration
     const boardSize = level;
@@ -12,8 +16,11 @@ const Game = ({ level, onBack, onComplete }) => {
     const [moveCount, setMoveCount] = useState(0);
     const [isVictory, setIsVictory] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
-    const [showInstructions, setShowInstructions] = useState(false);
     const [allowInvalidMoves, setAllowInvalidMoves] = useState(false);
+
+    // Leaderboard State
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [isNewHighScore, setIsNewHighScore] = useState(false);
 
     // UI state
     const [hintPosition, setHintPosition] = useState(null);
@@ -75,12 +82,18 @@ const Game = ({ level, onBack, onComplete }) => {
                 setIsVictory(true);
                 stopTimer();
                 triggerConfetti();
+                playSound('victory');
+
+                // Save Score
+                const isHigh = saveScore(boardSize, elapsedTime, moveCount);
+                setIsNewHighScore(isHigh);
+
                 if (onComplete) onComplete(boardSize, elapsedTime);
             }
         } else {
             setIsVictory(false);
         }
-    }, [queens, boardSize, isUnderAttack, isVictory, onComplete, elapsedTime]);
+    }, [queens, boardSize, isUnderAttack, isVictory, onComplete, elapsedTime, moveCount, playSound]);
 
     // Timer
     const startTimer = () => {
@@ -130,9 +143,11 @@ const Game = ({ level, onBack, onComplete }) => {
             setQueens(newQueens);
             setMoveCount(moveCount - 1);
             addToHistory(newQueens);
+            playSound('remove');
         } else {
             if (!allowInvalidMoves && isUnderAttack(row, col)) {
                 setInvalidSquare(position);
+                playSound('error');
                 setTimeout(() => setInvalidSquare(null), 500);
                 return;
             }
@@ -141,6 +156,7 @@ const Game = ({ level, onBack, onComplete }) => {
             setMoveCount(moveCount + 1);
             setHintPosition(null);
             addToHistory(newQueens);
+            playSound('place');
         }
     };
 
@@ -301,6 +317,12 @@ const Game = ({ level, onBack, onComplete }) => {
                 />
             ))}
 
+            <LeaderboardModal
+                isOpen={showLeaderboard}
+                onClose={() => setShowLeaderboard(false)}
+                boardSize={boardSize}
+            />
+
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex flex-col items-center mb-8 relative">
@@ -310,6 +332,24 @@ const Game = ({ level, onBack, onComplete }) => {
                     >
                         ← Map
                     </button>
+
+                    <div className="absolute right-0 top-2 flex gap-2">
+                        <button
+                            onClick={() => toggleMute()}
+                            className={`${currentTheme.buttonSecondary} w-10 h-10 rounded-full flex items-center justify-center`}
+                            title={isMuted ? "Unmute" : "Mute"}
+                        >
+                            {isMuted ? '🔇' : '🔊'}
+                        </button>
+                        <button
+                            onClick={() => setShowLeaderboard(true)}
+                            className={`${currentTheme.buttonSecondary} w-10 h-10 rounded-full flex items-center justify-center`}
+                            title="Leaderboard"
+                        >
+                            🏆
+                        </button>
+                    </div>
+
                     <h1 className={`text-4xl md:text-5xl font-bold bg-gradient-to-r ${currentTheme.gradientTitle} bg-clip-text text-transparent mb-2`}>
                         Level {boardSize - 3}: {boardSize} Queens
                     </h1>
@@ -375,13 +415,18 @@ const Game = ({ level, onBack, onComplete }) => {
                     <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full animate-bounce-slow text-center border-4 border-yellow-400">
                         <div className="text-6xl mb-4">🏆</div>
                         <h2 className="text-3xl font-bold text-gray-800 mb-2">Level Completed!</h2>
+                        {isNewHighScore && (
+                            <div className="mb-4 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg font-bold animate-pulse">
+                                🌟 NEW HIGH SCORE! 🌟
+                            </div>
+                        )}
                         <p className="text-gray-600 mb-6">You conquered the {boardSize}x{boardSize} board in {formatTime(elapsedTime)}.</p>
 
                         <div className="grid gap-3">
                             <button onClick={onBack} className={`${currentTheme.buttonPrimary} w-full py-3 rounded-xl font-bold text-lg shadow-lg`}>
                                 🗺️ Return to Map
                             </button>
-                            <button onClick={() => { setIsVictory(false); clearBoard(); }} className={`${currentTheme.buttonSecondary} w-full py-3 rounded-xl font-bold`}>
+                            <button onClick={() => { setIsVictory(false); clearBoard(); setIsNewHighScore(false); }} className={`${currentTheme.buttonSecondary} w-full py-3 rounded-xl font-bold`}>
                                 🔄 Replay Level
                             </button>
                         </div>
