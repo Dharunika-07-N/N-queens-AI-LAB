@@ -13,6 +13,7 @@ export default {
                 'wiggle': 'wiggle 0.5s ease-in-out',
                 'confetti': 'confetti 3s ease-out forwards',
                 'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                'zoom-in': 'zoomIn 0.5s ease-out forwards',
             },
             keyframes: {
                 wiggle: {
@@ -26,6 +27,10 @@ export default {
                 fadeInUp: {
                     '0%': { opacity: '0', transform: 'translateY(20px)' },
                     '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                zoomIn: {
+                    '0%': { opacity: '0', transform: 'scale(0.9)' },
+                    '100%': { opacity: '1', transform: 'scale(1)' },
                 },
                 'bounce-small': {
                     '0%, 100%': { transform: 'translateY(-5%)' },
