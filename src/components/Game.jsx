@@ -3,6 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSound } from '../contexts/SoundContext';
 import { saveScore } from '../utils/leaderboardUtils';
 import LeaderboardModal from './LeaderboardModal';
+import AnalysisDashboard from './AnalysisDashboard';
 
 const Game = ({ level, onBack, onComplete }) => {
     const { currentTheme } = useTheme();
@@ -18,8 +19,9 @@ const Game = ({ level, onBack, onComplete }) => {
     const [isSolving, setIsSolving] = useState(false);
     const [allowInvalidMoves, setAllowInvalidMoves] = useState(false);
 
-    // Leaderboard State
+    // Modals & Tools
     const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [showAnalysis, setShowAnalysis] = useState(false);
     const [isNewHighScore, setIsNewHighScore] = useState(false);
 
     // UI state
@@ -323,6 +325,12 @@ const Game = ({ level, onBack, onComplete }) => {
                 boardSize={boardSize}
             />
 
+            <AnalysisDashboard
+                boardSize={boardSize}
+                isOpen={showAnalysis}
+                onClose={() => setShowAnalysis(false)}
+            />
+
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex flex-col items-center mb-8 relative">
@@ -347,6 +355,13 @@ const Game = ({ level, onBack, onComplete }) => {
                             title="Leaderboard"
                         >
                             🏆
+                        </button>
+                        <button
+                            onClick={() => setShowAnalysis(true)}
+                            className={`${currentTheme.buttonSecondary} w-10 h-10 rounded-full flex items-center justify-center`}
+                            title="AI Analysis Dashboard"
+                        >
+                            🔬
                         </button>
                     </div>
 
