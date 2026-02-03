@@ -4,18 +4,24 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSound } from '../contexts/SoundContext';
 import { saveScore } from '../utils/leaderboardUtils';
 import { DIFFICULTIES } from '../utils/difficultyUtils';
+import { saveCampaignProgress } from '../utils/campaignUtils';
 import LeaderboardModal from './LeaderboardModal';
 import AnalysisDashboard from './AnalysisDashboard';
 import DifficultySelector from './DifficultySelector';
 
-const Game = ({ level, onBack, onComplete }) => {
-    const { currentTheme } = useTheme();
-    const { playSound, isMuted, toggleMute } = useSound();
+const Game = ({ level, onBack, onComplete, mode = 'classic', campaignLevelId, initialDifficulty = 'medium' }) => {
+  const { currentTheme } = useTheme();
+  const { playSound, isMuted, toggleMute } = useSound();
+  
+  // Board configuration
+  const boardSize = level;
+  const [queens, setQueens] = useState(new Set());
+  const [difficulty, setDifficulty] = useState(initialDifficulty);
 
-    // Board configuration
-    const boardSize = level;
-    const [queens, setQueens] = useState(new Set());
-    const [difficulty, setDifficulty] = useState('medium'); // Default to medium
+  // Update difficulty if prop changes (e.g. campaign level load)
+  useEffect(() => {
+    setDifficulty(initialDifficulty);
+  }, [initialDifficulty]);
 
     // Game state
     const [moveCount, setMoveCount] = useState(0);
@@ -93,14 +99,22 @@ const Game = ({ level, onBack, onComplete }) => {
 
                 // Save Score
                 const isHigh = saveScore(boardSize, elapsedTime, moveCount);
-                setIsNewHighScore(isHigh);
+                if (isNewHighScore) {
+                 setIsNewHighScore(false);
+                }
 
-                if (onComplete) onComplete(boardSize, elapsedTime);
+                // Campaign Logic
+                if (mode === 'campaign' && campaignLevelId) {
+                     saveCampaignProgress(campaignLevelId);
+                     if (onComplete) onComplete(boardSize, elapsedTime, true);
+                } else {
+                     if (onComplete) onComplete(boardSize, elapsedTime);
+                }
             }
         } else {
             setIsVictory(false);
         }
-    }, [queens, boardSize, isUnderAttack, isVictory, onComplete, elapsedTime, moveCount, playSound]);
+    }, [queens, boardSize, isUnderAttack, isVictory, onComplete, elapsedTime, moveCount, playSound, mode, campaignLevelId, isNewHighScore]);
 
     // Timer
     const startTimer = () => {
@@ -342,6 +356,12 @@ hover: opacity - 90 hover: scale - 105 z - 0 hover: z - 10
                 isOpen={showLeaderboard}
                 onClose={() => setShowLeaderboard(false)}
                 boardSize={boardSize}
+            />
+
+            <AnalysisDashboard
+                boardSize={boardSize}
+                isOpen={showAnalysis}
+                onClose={() => setShowAnalysis(false)}
             />
 
             {showDifficultySelect && (

@@ -1,13 +1,24 @@
 import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 
-const LevelMap = ({ unlockedMaxLevel, onSelectLevel }) => {
+const LevelMap = ({ unlockedMaxLevel, onSelectLevel, onBack }) => {
     const { currentTheme, switchTheme, themes } = useTheme();
 
     const levels = Array.from({ length: 9 }, (_, i) => i + 4); // 4 to 12
 
     return (
         <div className={`min-h-screen ${currentTheme.background} transition-colors duration-500 flex flex-col items-center py-12 px-4`}>
+
+            {/* Back Button */}
+            {onBack && (
+                <button
+                    onClick={onBack}
+                    className="absolute top-8 left-8 bg-white/90 backdrop-blur-md px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-white transition-all hover:scale-105 flex items-center gap-2"
+                >
+                    ← Menu
+                </button>
+            )}
+
             <h1 className={`text-6xl md:text-8xl font-black mb-4 bg-gradient-to-r ${currentTheme.gradientTitle} bg-clip-text text-transparent transform hover:scale-105 transition-transform duration-500 cursor-default select-none`}>
                 N-QUEENS
             </h1>
