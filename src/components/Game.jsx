@@ -1,9 +1,12 @@
+```
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSound } from '../contexts/SoundContext';
 import { saveScore } from '../utils/leaderboardUtils';
+import { DIFFICULTIES } from '../utils/difficultyUtils';
 import LeaderboardModal from './LeaderboardModal';
 import AnalysisDashboard from './AnalysisDashboard';
+import DifficultySelector from './DifficultySelector';
 
 const Game = ({ level, onBack, onComplete }) => {
     const { currentTheme } = useTheme();
@@ -12,6 +15,7 @@ const Game = ({ level, onBack, onComplete }) => {
     // Board configuration
     const boardSize = level;
     const [queens, setQueens] = useState(new Set());
+    const [difficulty, setDifficulty] = useState('medium'); // Default to medium
 
     // Game state
     const [moveCount, setMoveCount] = useState(0);
@@ -22,6 +26,7 @@ const Game = ({ level, onBack, onComplete }) => {
     // Modals & Tools
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [showAnalysis, setShowAnalysis] = useState(false);
+    const [showDifficultySelect, setShowDifficultySelect] = useState(false);
     const [isNewHighScore, setIsNewHighScore] = useState(false);
 
     // UI state
@@ -59,7 +64,7 @@ const Game = ({ level, onBack, onComplete }) => {
         for (let row = 0; row < boardSize; row++) {
             for (let col = 0; col < boardSize; col++) {
                 if (isUnderAttack(row, col)) {
-                    attacked.add(`${row},${col}`);
+                    attacked.add(`${ row },${ col } `);
                 }
             }
         }
@@ -126,14 +131,14 @@ const Game = ({ level, onBack, onComplete }) => {
         const totalSeconds = Math.floor(ms / 1000);
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
-        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        return `${ minutes.toString().padStart(2, '0') }:${ seconds.toString().padStart(2, '0') } `;
     };
 
     // Click Handler
     const handleSquareClick = (row, col) => {
         if (isSolving || isVictory) return;
 
-        const position = `${row},${col}`;
+        const position = `${ row },${ col } `;
         const newQueens = new Set(queens);
 
         if (queens.size === 0 && !newQueens.has(position)) {
@@ -209,7 +214,7 @@ const Game = ({ level, onBack, onComplete }) => {
         for (let col = 0; col < n; col++) {
             if (!isUnderAttack(row, col, currentQueens)) {
                 const newQueens = new Set(currentQueens);
-                newQueens.add(`${row},${col}`);
+                newQueens.add(`${ row },${ col } `);
                 solveNQueens(n, newQueens, row + 1, solutions);
             }
         }
@@ -240,9 +245,15 @@ const Game = ({ level, onBack, onComplete }) => {
     };
 
     const showHint = () => {
+        // Difficulty Check: Hard/Expert have no hints
+        if (difficulty === 'hard' || difficulty === 'expert') {
+             playSound('error');
+             return;
+        }
+
         for (let row = 0; row < boardSize; row++) {
             for (let col = 0; col < boardSize; col++) {
-                const position = `${row},${col}`;
+                const position = `${ row },${ col } `;
                 if (!queens.has(position) && !isUnderAttack(row, col)) {
                     setHintPosition(position);
                     setTimeout(() => setHintPosition(null), 3000);
@@ -271,15 +282,20 @@ const Game = ({ level, onBack, onComplete }) => {
         const board = [];
         for (let row = 0; row < boardSize; row++) {
             for (let col = 0; col < boardSize; col++) {
-                const position = `${row},${col}`;
+                const position = `${ row },${ col } `;
                 const hasQueen = queens.has(position);
                 const isAttacked = getAttackedSquares.has(position) && !hasQueen;
                 const isHint = hintPosition === position;
                 const isInvalid = invalidSquare === position;
                 const isLight = (row + col) % 2 === 0;
 
+                // Difficulty Logic
+                const showSafeSquares = difficulty === 'easy' && !hasQueen && !isAttacked;
+                const hideQueens = difficulty === 'expert' && hasQueen && !isVictory && position !== invalidSquare; // Hide queens in expert mode unless game over
+
                 // Theme colors
                 let bgColor = isLight ? currentTheme.squareLight : currentTheme.squareDark;
+                if (showSafeSquares) bgColor = 'bg-green-100/50'; // Subtle guide for Easy mode
                 if (isAttacked) bgColor = 'bg-red-400 bg-opacity-70';
                 if (isHint) bgColor = 'bg-green-400 animate-pulse';
                 if (isInvalid) bgColor = 'bg-red-600 animate-ping';
@@ -289,19 +305,22 @@ const Game = ({ level, onBack, onComplete }) => {
                         key={position}
                         onClick={() => handleSquareClick(row, col)}
                         className={`
-              ${bgColor}
-              aspect-square flex items-center justify-center cursor-pointer transition-all duration-200 relative
-              hover:opacity-90 hover:scale-105 z-0 hover:z-10
-            `}
+              ${ bgColor }
+aspect - square flex items - center justify - center cursor - pointer transition - all duration - 200 relative
+hover: opacity - 90 hover: scale - 105 z - 0 hover: z - 10
+    `}
                         style={{ gridColumn: col + 1, gridRow: row + 1 }}
                     >
-                        {hasQueen && (
+                        {hasQueen && !hideQueens && (
                             <span className="text-4xl md:text-5xl select-none transition-all transform animate-bounce-small" style={{
                                 color: isLight ? currentTheme.queenLight : currentTheme.queenDark,
                                 filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.5))'
                             }}>
                                 ♛
                             </span>
+                        )}
+                        {hideQueens && (
+                             <span className="text-xs text-gray-400 opacity-20">?</span>
                         )}
                     </div>
                 );
@@ -311,11 +330,11 @@ const Game = ({ level, onBack, onComplete }) => {
     };
 
     return (
-        <div className={`min-h-screen p-4 md:p-8 ${currentTheme.background} transition-colors duration-500`}>
+        <div className={`min - h - screen p - 4 md: p - 8 ${ currentTheme.background } transition - colors duration - 500`}>
             {/* Confetti */}
             {confetti.map(piece => (
-                <div key={piece.id} className={`absolute w-2 h-2 animate-confetti ${piece.color}`}
-                    style={{ left: `${piece.left}%`, animationDelay: `${piece.delay}s`, top: '-10px' }}
+                <div key={piece.id} className={`absolute w - 2 h - 2 animate - confetti ${ piece.color } `}
+                    style={{ left: `${ piece.left }% `, animationDelay: `${ piece.delay } s`, top: '-10px' }}
                 />
             ))}
 
@@ -325,50 +344,66 @@ const Game = ({ level, onBack, onComplete }) => {
                 boardSize={boardSize}
             />
 
-            <AnalysisDashboard
-                boardSize={boardSize}
-                isOpen={showAnalysis}
-                onClose={() => setShowAnalysis(false)}
-            />
+            {showDifficultySelect && (
+                <DifficultySelector
+                    selectedDifficulty={difficulty}
+                    onSelect={(diff) => {
+                        setDifficulty(diff);
+                        setShowDifficultySelect(false);
+                        clearBoard();
+                    }}
+                    onClose={() => setShowDifficultySelect(false)}
+                />
+            )}
 
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="flex flex-col items-center mb-8 relative">
-                    <button
-                        onClick={onBack}
-                        className={`absolute left-0 top-2 ${currentTheme.buttonSecondary} px-4 py-2 rounded-lg font-semibold flex items-center gap-2`}
-                    >
-                        ← Map
-                    </button>
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col items-center mb-8 relative">
+           <button
+            onClick={onBack}
+            className={`absolute left - 0 top - 2 ${ currentTheme.buttonSecondary } px - 4 py - 2 rounded - lg font - semibold flex items - center gap - 2`}
+          >
+            ← Map
+          </button>
 
-                    <div className="absolute right-0 top-2 flex gap-2">
-                        <button
-                            onClick={() => toggleMute()}
-                            className={`${currentTheme.buttonSecondary} w-10 h-10 rounded-full flex items-center justify-center`}
-                            title={isMuted ? "Unmute" : "Mute"}
-                        >
+          <div className="absolute right-0 top-2 flex gap-2">
+
+            {/* Difficulty Button */}
+            <button
+                onClick={() => setShowDifficultySelect(true)}
+                className={`${ currentTheme.buttonSecondary } w - 10 h - 10 rounded - full flex items - center justify - center text - xl`}
+                title={`Difficulty: ${ DIFFICULTIES[difficulty.toUpperCase()]?.name } `}
+            >
+                {DIFFICULTIES[difficulty.toUpperCase()]?.icon}
+            </button>
+
+            <button
+              onClick={() => toggleMute()}
+              className={`${ currentTheme.buttonSecondary } w - 10 h - 10 rounded - full flex items - center justify - center`}
+              title={isMuted ? "Unmute" : "Mute"}
+            >
                             {isMuted ? '🔇' : '🔊'}
                         </button>
                         <button
                             onClick={() => setShowLeaderboard(true)}
-                            className={`${currentTheme.buttonSecondary} w-10 h-10 rounded-full flex items-center justify-center`}
+                            className={`${ currentTheme.buttonSecondary } w - 10 h - 10 rounded - full flex items - center justify - center`}
                             title="Leaderboard"
                         >
                             🏆
                         </button>
                         <button
                             onClick={() => setShowAnalysis(true)}
-                            className={`${currentTheme.buttonSecondary} w-10 h-10 rounded-full flex items-center justify-center`}
+                            className={`${ currentTheme.buttonSecondary } w - 10 h - 10 rounded - full flex items - center justify - center`}
                             title="AI Analysis Dashboard"
                         >
                             🔬
                         </button>
                     </div>
 
-                    <h1 className={`text-4xl md:text-5xl font-bold bg-gradient-to-r ${currentTheme.gradientTitle} bg-clip-text text-transparent mb-2`}>
+                    <h1 className={`text - 4xl md: text - 5xl font - bold bg - gradient - to - r ${ currentTheme.gradientTitle } bg - clip - text text - transparent mb - 2`}>
                         Level {boardSize - 3}: {boardSize} Queens
                     </h1>
-                    <p className={`${currentTheme.textHighlight} text-lg`}>
+                    <p className={`${ currentTheme.textHighlight } text - lg`}>
                         {formatTime(elapsedTime)} • {queens.size}/{boardSize} Queens
                     </p>
                 </div>
@@ -377,15 +412,15 @@ const Game = ({ level, onBack, onComplete }) => {
                     {/* Sidebar Controls */}
                     <div className="flex flex-col gap-4 w-full lg:w-64 order-2 lg:order-1">
                         <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-xl p-4 border border-white/50">
-                            <h3 className={`font-bold ${currentTheme.textHighlight} mb-3`}>Controls</h3>
+                            <h3 className={`font - bold ${ currentTheme.textHighlight } mb - 3`}>Controls</h3>
                             <div className="space-y-2">
-                                <button onClick={showHint} className={`w-full ${currentTheme.buttonPrimary} px-4 py-2 rounded-md shadow transition-transform active:scale-95`} disabled={isSolving || isVictory}>
+                                <button onClick={showHint} className={`w - full ${ currentTheme.buttonPrimary } px - 4 py - 2 rounded - md shadow transition - transform active: scale - 95`} disabled={isSolving || isVictory}>
                                     💡 Hint
                                 </button>
-                                <button onClick={undo} className={`w-full ${currentTheme.buttonSecondary} px-4 py-2 rounded-md shadow transition-transform active:scale-95`} disabled={historyIndex <= 0 || isSolving}>
+                                <button onClick={undo} className={`w - full ${ currentTheme.buttonSecondary } px - 4 py - 2 rounded - md shadow transition - transform active: scale - 95`} disabled={historyIndex <= 0 || isSolving}>
                                     ↶ Undo
                                 </button>
-                                <button onClick={clearBoard} className={`w-full ${currentTheme.buttonSecondary} px-4 py-2 rounded-md shadow transition-transform active:scale-95`} disabled={isSolving}>
+                                <button onClick={clearBoard} className={`w - full ${ currentTheme.buttonSecondary } px - 4 py - 2 rounded - md shadow transition - transform active: scale - 95`} disabled={isSolving}>
                                     🔄 Reset
                                 </button>
                                 <div className="pt-2 border-t border-gray-200 mt-2">
@@ -398,9 +433,9 @@ const Game = ({ level, onBack, onComplete }) => {
                         </div>
 
                         <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-xl p-4 border border-white/50">
-                            <h3 className={`font-bold ${currentTheme.textHighlight} mb-2`}>Challenge</h3>
+                            <h3 className={`font - bold ${ currentTheme.textHighlight } mb - 2`}>Challenge</h3>
                             <p className="text-sm text-gray-600 mb-2">Find all solutions for extra glory!</p>
-                            <button onClick={solvePuzzle} className={`w-full bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700`} disabled={isSolving}>
+                            <button onClick={solvePuzzle} className={`w - full bg - gray - 600 text - white px - 4 py - 2 rounded - md text - sm hover: bg - gray - 700`} disabled={isSolving}>
                                 {isSolving ? 'Solving...' : '🤖 Watch AI Solve'}
                             </button>
                         </div>
@@ -409,10 +444,10 @@ const Game = ({ level, onBack, onComplete }) => {
                     {/* Board Area */}
                     <div className="order-1 lg:order-2 flex-grow flex justify-center">
                         <div
-                            className={`inline-grid gap-0 shadow-2xl rounded-lg overflow-hidden border-8 ${currentTheme.boardBorder} transition-colors duration-500`}
+                            className={`inline - grid gap - 0 shadow - 2xl rounded - lg overflow - hidden border - 8 ${ currentTheme.boardBorder } transition - colors duration - 500`}
                             style={{
-                                gridTemplateColumns: `repeat(${boardSize}, minmax(0, 1fr))`,
-                                gridTemplateRows: `repeat(${boardSize}, minmax(0, 1fr))`,
+                                gridTemplateColumns: `repeat(${ boardSize }, minmax(0, 1fr))`,
+                                gridTemplateRows: `repeat(${ boardSize }, minmax(0, 1fr))`,
                                 width: 'min(85vw, 600px)',
                                 height: 'min(85vw, 600px)',
                             }}
@@ -438,10 +473,10 @@ const Game = ({ level, onBack, onComplete }) => {
                         <p className="text-gray-600 mb-6">You conquered the {boardSize}x{boardSize} board in {formatTime(elapsedTime)}.</p>
 
                         <div className="grid gap-3">
-                            <button onClick={onBack} className={`${currentTheme.buttonPrimary} w-full py-3 rounded-xl font-bold text-lg shadow-lg`}>
+                            <button onClick={onBack} className={`${ currentTheme.buttonPrimary } w - full py - 3 rounded - xl font - bold text - lg shadow - lg`}>
                                 🗺️ Return to Map
                             </button>
-                            <button onClick={() => { setIsVictory(false); clearBoard(); setIsNewHighScore(false); }} className={`${currentTheme.buttonSecondary} w-full py-3 rounded-xl font-bold`}>
+                            <button onClick={() => { setIsVictory(false); clearBoard(); setIsNewHighScore(false); }} className={`${ currentTheme.buttonSecondary } w - full py - 3 rounded - xl font - bold`}>
                                 🔄 Replay Level
                             </button>
                         </div>
